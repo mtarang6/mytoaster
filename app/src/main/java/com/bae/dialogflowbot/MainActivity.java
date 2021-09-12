@@ -74,16 +74,19 @@ public class MainActivity extends AppCompatActivity implements BotReply {
 
   private void setUpBot() {
     try {
-      InputStream stream = this.getResources().openRawResource(R.raw.credential);
+      InputStream stream = this.getResources().openRawResource(R.raw.credentials);
       GoogleCredentials credentials = GoogleCredentials.fromStream(stream)
           .createScoped(Lists.newArrayList("https://www.googleapis.com/auth/cloud-platform"));
+      Log.e(TAG, "setUpBot: "+credentials);//https://accounts.google.com/o/oauth2/auth
       String projectId = ((ServiceAccountCredentials) credentials).getProjectId();
-
+//https://www.googleapis.com/auth/cloud-platform
       SessionsSettings.Builder settingsBuilder = SessionsSettings.newBuilder();
       SessionsSettings sessionsSettings = settingsBuilder.setCredentialsProvider(
           FixedCredentialsProvider.create(credentials)).build();
       sessionsClient = SessionsClient.create(sessionsSettings);
       sessionName = SessionName.of(projectId, uuid);
+      Log.e(TAG, "sessionsClient: "+sessionsClient);
+      Log.e(TAG, "sessionName: "+sessionName);
 
       Log.d(TAG, "projectId : " + projectId);
     } catch (Exception e) {
@@ -99,8 +102,10 @@ public class MainActivity extends AppCompatActivity implements BotReply {
 
   @Override
   public void callback(DetectIntentResponse returnResponse) {
+    Log.e(TAG, "callback: "+returnResponse + " responses know " +returnResponse );
      if(returnResponse!=null) {
        String botReply = returnResponse.getQueryResult().getFulfillmentText();
+       Log.d(TAG, "botReply: "+botReply);
        if(!botReply.isEmpty()){
          messageList.add(new Message(botReply, true));
          chatAdapter.notifyDataSetChanged();
