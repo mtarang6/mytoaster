@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.bae.dialogflowbot">
   <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.READ_VOICEMAIL"/>
+  <uses-permission android:name="android.permission.ADD_VOICEMAIL"/>
+  <uses-permission android:name="android.permission.WRITE_VOICEMAIL"/>
+
 
   <application
       android:allowBackup="true"

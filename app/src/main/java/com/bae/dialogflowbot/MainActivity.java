@@ -1,11 +1,15 @@
 package com.bae.dialogflowbot;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.speech.RecognizerIntent;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bae.dialogflowbot.adapters.ChatAdapter;
@@ -55,7 +59,12 @@ public class MainActivity extends AppCompatActivity implements BotReply {
 
     btnSend.setOnClickListener(new View.OnClickListener() {
       @Override public void onClick(View view) {
-        String message = editMessage.getText().toString();
+        Intent speechInteny = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        speechInteny.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        speechInteny.putExtra(RecognizerIntent.EXTRA_PROMPT,"Speak To Text");
+        startActivityForResult(speechInteny,1);
+        ///
+      /*  String message = editMessage.getText().toString();
         if (!message.isEmpty()) {
           messageList.add(new Message(message, false));
           editMessage.setText("");
@@ -65,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements BotReply {
               .scrollToPosition(messageList.size() - 1);
         } else {
           Toast.makeText(MainActivity.this, "Please enter text!", Toast.LENGTH_SHORT).show();
-        }
+        }*/
       }
     });
 
@@ -74,12 +83,11 @@ public class MainActivity extends AppCompatActivity implements BotReply {
 
   private void setUpBot() {
     try {
-      InputStream stream = this.getResources().openRawResource(R.raw.credentials);
+      InputStream stream = this.getResources().openRawResource(R.raw.cred);
       GoogleCredentials credentials = GoogleCredentials.fromStream(stream)
           .createScoped(Lists.newArrayList("https://www.googleapis.com/auth/cloud-platform"));
-      Log.e(TAG, "setUpBot: "+credentials);//https://accounts.google.com/o/oauth2/auth
+      Log.e(TAG, "setUpBot: "+credentials);
       String projectId = ((ServiceAccountCredentials) credentials).getProjectId();
-//https://www.googleapis.com/auth/cloud-platform
       SessionsSettings.Builder settingsBuilder = SessionsSettings.newBuilder();
       SessionsSettings sessionsSettings = settingsBuilder.setCredentialsProvider(
           FixedCredentialsProvider.create(credentials)).build();
@@ -116,5 +124,27 @@ public class MainActivity extends AppCompatActivity implements BotReply {
      } else {
        Toast.makeText(this, "failed to connect!", Toast.LENGTH_SHORT).show();
      }
+  }
+
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+    if(requestCode == 1 && resultCode == RESULT_OK){
+      ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+      String message = matches.get(0).toString();
+      editMessage.setText(message);
+            //  editMessage.setText(matches.get(0).toString());
+     // String message = editMessage.getText().toString();
+      if (!message.isEmpty()) {
+        messageList.add(new Message(message, false));
+        editMessage.setText("");
+        sendMessageToBot(message);
+        Objects.requireNonNull(chatView.getAdapter()).notifyDataSetChanged();
+        Objects.requireNonNull(chatView.getLayoutManager())
+                .scrollToPosition(messageList.size() - 1);
+      } else {
+        Toast.makeText(MainActivity.this, "Please enter text!", Toast.LENGTH_SHORT).show();
+      }
+    }
+    super.onActivityResult(requestCode, resultCode, data);
   }
 }
