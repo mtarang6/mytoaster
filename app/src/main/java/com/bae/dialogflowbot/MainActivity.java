@@ -131,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements BotReply {
     if(requestCode == 1 && resultCode == RESULT_OK){
       ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
       String message = matches.get(0).toString();
-      editMessage.setText(message);
+   //   editMessage.setText(message);
             //  editMessage.setText(matches.get(0).toString());
      // String message = editMessage.getText().toString();
       if (!message.isEmpty()) {
