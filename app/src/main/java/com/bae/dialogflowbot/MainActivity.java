@@ -1,16 +1,28 @@
 package com.bae.dialogflowbot;
 
+import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bae.dialogflowbot.adapters.ChatAdapter;
 import com.bae.dialogflowbot.helpers.SendMessageInBg;
@@ -28,7 +40,9 @@ import com.google.cloud.dialogflow.v2.TextInput;
 import com.google.common.collect.Lists;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -46,6 +60,10 @@ public class MainActivity extends AppCompatActivity implements BotReply {
   private String uuid = UUID.randomUUID().toString();
   private String TAG = "mainactivity";
 
+  private TextToSpeech textToSpeech;
+  private String languageCode;
+
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -53,7 +71,13 @@ public class MainActivity extends AppCompatActivity implements BotReply {
     chatView = findViewById(R.id.chatView);
     editMessage = findViewById(R.id.editMessage);
     btnSend = findViewById(R.id.btnSend);
-
+    languageCode  = getString(R.string.language_code);
+    initTTS();
+    if (ContextCompat.checkSelfPermission(this,
+            Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+      ActivityCompat.requestPermissions(this,
+              new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+    }
     chatAdapter = new ChatAdapter(messageList, this);
     chatView.setAdapter(chatAdapter);
 
@@ -118,6 +142,12 @@ public class MainActivity extends AppCompatActivity implements BotReply {
          messageList.add(new Message(botReply, true));
          chatAdapter.notifyDataSetChanged();
          Objects.requireNonNull(chatView.getLayoutManager()).scrollToPosition(messageList.size() - 1);
+         if (botReply.length() > 1) {
+           muteAudio(false);
+           HashMap<String, String> speechParams = new HashMap<>();
+           speechParams.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, uuid);
+           textToSpeech.speak(botReply, TextToSpeech.QUEUE_ADD, speechParams);
+         }
        }else {
          Toast.makeText(this, "something went wrong", Toast.LENGTH_SHORT).show();
        }
@@ -146,5 +176,70 @@ public class MainActivity extends AppCompatActivity implements BotReply {
       }
     }
     super.onActivityResult(requestCode, resultCode, data);
+  }
+  @SuppressWarnings("ConstantConditions")
+  private void muteAudio(boolean state) {
+    try {
+      AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+      audioManager.setStreamMute(AudioManager.STREAM_NOTIFICATION, state);
+      audioManager.setStreamMute(AudioManager.STREAM_ALARM, state);
+      audioManager.setStreamMute(AudioManager.STREAM_MUSIC, state);
+      audioManager.setStreamMute(AudioManager.STREAM_RING, state);
+      audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, state);
+    }catch (NullPointerException e){
+      e.printStackTrace();
+    }
+  }
+  public void initTTS() {
+      textToSpeech = new TextToSpeech(getApplicationContext(), new TextToSpeech.OnInitListener() {
+        @Override
+        public void onInit(int status) {
+          if (status != TextToSpeech.ERROR) {
+            int setLanguage = textToSpeech.setLanguage(Locale.ENGLISH);
+            // TODO: Update voice parameters.
+            if (setLanguage == TextToSpeech.LANG_MISSING_DATA ||
+                    setLanguage == TextToSpeech.LANG_NOT_SUPPORTED) {
+              Toast.makeText(getApplicationContext(),
+                      getString(R.string.texttospeech_init_error),
+                      Toast.LENGTH_SHORT).show();
+              finish();
+            }
+            textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+              @Override
+              public void onStart(String s) {
+              }
+
+              @Override
+              public void onDone(String s) {
+                runOnUiThread(new Runnable() {
+                  @Override
+                  public void run() {
+                    new Handler().postDelayed(new Runnable() {
+                      @Override
+                      public void run() {
+                        muteAudio(true);
+
+                      }
+                    }, 500);
+                  }
+                });
+              }
+
+              @Override
+              public void onError(final String s) {
+                runOnUiThread(new Runnable() {
+                  @Override
+                  public void run() {
+
+                    muteAudio(true);
+
+                  }
+                });
+              }
+            });
+          }
+        }
+      });
+
   }
 }
